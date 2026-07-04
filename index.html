@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCM学習フラッシュカード</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --panel: #1a2534;
+    --panel-2: #22303f;
+    --accent: #4fd1c5;
+    --accent-2: #f6ad55;
+    --text: #e6edf3;
+    --muted: #8fa3b8;
+    --known: #38a169;
+    --unknown: #e53e3e;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(160deg, #0f1720, #142033 60%, #0f1720);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    margin: 0 0 4px;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .toolbar {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  select, button.tool-btn {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid #2f4257;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  button.tool-btn:hover, select:hover { border-color: var(--accent); }
+  .stats {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .progress-bar {
+    width: 100%;
+    max-width: 640px;
+    height: 6px;
+    background: var(--panel-2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+  .card-wrap {
+    perspective: 1400px;
+    width: 100%;
+    max-width: 640px;
+    height: 320px;
+    margin-bottom: 20px;
+  }
+  .card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(.4,.2,.2,1);
+  }
+  .card.flipped { transform: rotateY(180deg); }
+  .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: var(--radius);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    border: 1px solid #2f4257;
+  }
+  .face.front {
+    background: linear-gradient(155deg, var(--panel), var(--panel-2));
+  }
+  .face.back {
+    background: linear-gradient(155deg, #1c2b22, #22403a);
+    transform: rotateY(180deg);
+  }
+  .badge {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    background: rgba(79, 209, 197, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(79, 209, 197, 0.4);
+  }
+  .card-index {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .q-text {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    font-weight: 600;
+  }
+  .a-text {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #d7f5ee;
+  }
+  .hint {
+    margin-top: 16px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 640px;
+  }
+  .controls button {
+    flex: 1 1 auto;
+    min-width: 90px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s;
+  }
+  .controls button:active { transform: scale(0.97); }
+  #knownBtn {
+    background: var(--known);
+    color: white;
+  }
+  #unknownBtn {
+    background: var(--unknown);
+    color: white;
+  }
+  #shuffleBtn {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+  }
+  footer {
+    margin-top: 30px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧭 SCM(サプライチェーン管理)学習フラッシュカード</h1>
+  <p>需要予測・在庫理論・生産計画・物流・システムアーキテクチャを資格試験レベルで反復学習</p>
+</header>
+
+<div class="toolbar">
+  <select id="categorySelect"></select>
+  <select id="modeSelect">
+    <option value="all">全カード</option>
+    <option value="unknown">未習得のみ</option>
+  </select>
+  <button class="tool-btn" id="resetProgressBtn">進捗をリセット</button>
+</div>
+
+<div class="stats">
+  <span id="statsText">0 / 0</span>
+  <span id="masteredText">習得済み: 0</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="card-wrap" id="cardWrap">
+  <div class="card" id="card">
+    <div class="face front">
+      <span class="badge" id="badgeFront"></span>
+      <span class="card-index" id="indexFront"></span>
+      <div class="q-text" id="qText"></div>
+      <div class="hint">クリックして解答を表示</div>
+    </div>
+    <div class="face back">
+      <span class="badge" id="badgeBack"></span>
+      <span class="card-index" id="indexBack"></span>
+      <div class="a-text" id="aText"></div>
+      <div class="hint">クリックして質問に戻る</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="unknownBtn">✗ もう一度</button>
+  <button id="knownBtn">✓ わかった</button>
+</div>
+<div class="controls" style="margin-top:10px;">
+  <button id="shuffleBtn">🔀 シャッフル</button>
+</div>
+
+<footer>進捗はブラウザのlocalStorageに保存されます。カードは DECK 配列内で自由に追加・編集できます。</footer>
+
+<script>
+const DECK = [
+  // SCM基礎・戦略
+  { id: 100, cat: "SCM基礎・戦略", q: "SCORモデルとは何か？", a: "Supply Chain Council（現ASCMの一部）が策定した、サプライチェーンの業務プロセスを標準化して診断・比較するためのプロセス参照モデル。" },
+  { id: 101, cat: "SCM基礎・戦略", q: "SCORモデルの6つの中核プロセスを挙げよ。", a: "Plan（計画）、Source（調達）、Make（製造）、Deliver（配送）、Return（返品）、Enable（実現・管理）。" },
+  { id: 102, cat: "SCM基礎・戦略", q: "SCORの「Plan」プロセスの内容は？", a: "需給を突き合わせ、調達・生産・配送の最適な行動指針を立てる。" },
+  { id: 111, cat: "SCM基礎・戦略", q: "SCORの「Source」プロセスの内容は？", a: "計画・実需に応じて財・サービスを調達する。" },
+  { id: 112, cat: "SCM基礎・戦略", q: "SCORの「Deliver」プロセスの内容は？", a: "完成品・サービスを顧客に届ける（受注管理・輸送管理・配送管理を含む）。" },
+  { id: 103, cat: "SCM基礎・戦略", q: "プッシュ型のサプライチェーン戦略とは？", a: "需要予測に基づき、上流工程をあらかじめ計画・生産する方式。" },
+  { id: 110, cat: "SCM基礎・戦略", q: "プル型のサプライチェーン戦略とは？", a: "実際の顧客注文をトリガーに、下流工程を動かす方式。" },
+  { id: 104, cat: "SCM基礎・戦略", q: "デカップリングポイント（押し引きの分岐点）とは？", a: "サプライチェーン上で、上流（予測ベース＝プッシュ）と下流（受注ベース＝プル）の境界となる地点。在庫をどこに、どれだけ持つかを左右する設計上の要点。" },
+  { id: 105, cat: "SCM基礎・戦略", q: "VMI（Vendor Managed Inventory）とは？", a: "顧客ではなくサプライヤー（供給者）側が、顧客の在庫補充のタイミングと数量を決定する仕組み。POSデータ等の共有によりブルウィップ効果の抑制にも寄与する。" },
+  { id: 106, cat: "SCM基礎・戦略", q: "CPFR（Collaborative Planning, Forecasting and Replenishment）とは何か？", a: "サプライチェーンパートナー間で計画・予測・補充を協働して行う枠組み。VMIより広い概念で、VMIはCPFRの一部・実装形態の一つと位置づけられる。" },
+  { id: 107, cat: "SCM基礎・戦略", q: "ブルウィップ効果とは何か？", a: "小売レベルでの需要のわずかな変動が、卸・流通・製造といった上流に向かうにつれて増幅されていく現象。" },
+  { id: 108, cat: "SCM基礎・戦略", q: "ブルウィップ効果の4大要因を挙げよ。", a: "需要予測の逐次更新（デマンドシグナル処理）、オーダーバッチング（まとめ発注）、価格変動、品不足時の便乗発注（rationing game）。" },
+  { id: 109, cat: "SCM基礎・戦略", q: "ブルウィップ効果を緩和する代表的な施策は？", a: "POS実需データの共有（VMI/CPFR）、発注ロットの縮小、価格変動（プロモーション）の抑制、リードタイムの短縮など。" },
+  { id: 113, cat: "SCM基礎・戦略", q: "SCORモデルを構成する4つの主要セクションを挙げよ。", a: "Performance（パフォーマンス）、Processes（プロセス）、Practices（実践手法）、People（人材・スキル）。" },
+  { id: 114, cat: "SCM基礎・戦略", q: "SCORの5つのパフォーマンス属性を挙げよ。", a: "Reliability（信頼性）、Responsiveness（俊敏性/応答性）、Agility（機敏性）、Cost（コスト）、Asset Management Efficiency（資産管理効率）。" },
+  { id: 115, cat: "SCM基礎・戦略", q: "SCORのReliability（信頼性）属性を代表するLevel-1指標は？", a: "Perfect Order Fulfillment（完全注文達成率、コード：RL.1.1）。" },
+  { id: 116, cat: "SCM基礎・戦略", q: "SCORのResponsiveness（俊敏性）属性を代表するLevel-1指標は？", a: "Order Fulfillment Cycle Time（受注から納品までのサイクルタイム、コード：RS.1.1）。" },
+  { id: 117, cat: "SCM基礎・戦略", q: "SCORのAgility（機敏性）属性に含まれる3つのLevel-1指標を挙げよ。", a: "Upside Supply Chain Adaptability（上振れ対応力）、Downside Supply Chain Adaptability（下振れ対応力）、Overall Value at Risk（リスク総額）。" },
+  { id: 118, cat: "SCM基礎・戦略", q: "SCORのAsset Management Efficiency（資産管理効率）属性の代表的なLevel-1指標を3つ挙げよ。", a: "Cash-to-Cash Cycle Time、Return on Supply Chain Fixed Assets（サプライチェーン固定資産利益率）、Return on Working Capital（運転資本利益率）。" },
+  { id: 119, cat: "SCM基礎・戦略", q: "SCORのプロセス階層におけるLevel1〜Level4はそれぞれ何を定義するか。", a: "Level1：プロセスの範囲・内容・目標。Level2：オペレーション戦略（Make-to-Stock/Make-to-Order/Engineer-to-Order等）。Level3：個々のプロセスの構成（インプット・アウトプット・ベストプラクティス）。Level4：カイゼン・リーン・シックスシグマなどの改善活動。" },
+  { id: 120, cat: "SCM基礎・戦略", q: "SCORのプロセスコード化で「sD1.2」という表記は何を表すか。", a: "s＝SCOR、D＝Deliverプロセス（Level1）、1＝Level2の分類番号、.2＝Level3の個別プロセス番号。sD1.2は「受注の受領・入力・検証」を表す。" },
+  { id: 121, cat: "SCM基礎・戦略", q: "SCORのPracticesにおける3つの分類を挙げよ。", a: "Emerging Practices（新興、BP.E）、Best Practices（最良、BP.B）、Standard Practices（標準、BP.S）。" },
+  { id: 122, cat: "SCM基礎・戦略", q: "SCORのPeopleセクションが定義する5段階の習熟度レベルを挙げよ。", a: "Novice（未経験）、Beginner（初級）、Competent（習熟）、Proficient（熟練）、Expert（エキスパート）。" },
+  { id: 123, cat: "SCM基礎・戦略", q: "SCOR改善手法「SCOR Racetrack」を構成する5つのステップは？", a: "Pre-SCOR Program Steps（事前準備）、Set the Scope（範囲設定）、Configure the Supply Chain（サプライチェーン構成）、Optimize Projects（プロジェクト最適化）、Ready for Implementation（実装準備）。" },
+  { id: 124, cat: "SCM基礎・戦略", q: "延期戦略（ポストポーンメント）とは何か。", a: "最終組立・生産・包装などの活動を可能な限り遅らせる戦略。完成品在庫の過剰保有を避けつつ、顧客注文に応じたカスタマイズの機会を最大化する。" },
+
+  // 需要予測
+  { id: 200, cat: "需要予測", q: "移動平均法（Moving Average）による需要予測の考え方は？", a: "直近n期間の実績の単純平均を次期予測値とする手法。短期的な変動を平滑化し、トレンド把握に向く。" },
+  { id: 201, cat: "需要予測", q: "指数平滑法（Exponential Smoothing）の計算式は？", a: "F(t+1) = α×D(t) + (1-α)×F(t)。直近の実需要D(t)と直前の予測値F(t)を平滑化係数αで加重平均する。" },
+  { id: 202, cat: "需要予測", q: "指数平滑法における平滑化係数αを大きくするとどうなるか？", a: "直近の実需要変化に対して予測がより敏感（反応的）になる。ただしαが大きすぎるとノイズに過剰反応するリスクがある。" },
+  { id: 203, cat: "需要予測", q: "需要予測の精度を測る代表的な指標を3つ挙げよ。", a: "MAE（平均絶対誤差）、MAPE（平均絶対パーセント誤差）、RMSE（二乗平均平方根誤差）。" },
+  { id: 204, cat: "需要予測", q: "MAPE（平均絶対パーセント誤差）がSKU間比較に向いている理由は？", a: "誤差を金額や数量ではなくパーセンテージで表現するため、需要規模が異なるSKU同士でも精度を横並びで比較できる。" },
+  { id: 205, cat: "需要予測", q: "予測精度（MAPE）の改善が安全在庫に与える一般的な効果は？", a: "一般に、MAPEを10ポイント改善すると、サービスレベルを維持したまま安全在庫を10〜30%程度削減できるとされる。" },
+  { id: 206, cat: "需要予測", q: "需要計画における「集約（アグリゲーション）」の考え方とは？", a: "個々のSKU単位よりも、カテゴリ・地域・期間などで集約したレベルの方が需要変動が相殺され、予測誤差率が小さくなる傾向を利用する考え方。" },
+
+  // 在庫理論
+  { id: 300, cat: "在庫理論", q: "EOQ（経済的発注量）の計算式は？", a: "EOQ = √(2DS/H)。D：年間需要量、S：1回あたりの発注コスト、H：単位あたりの年間保管コスト。" },
+  { id: 301, cat: "在庫理論", q: "EOQモデルが最小化しようとしているコストは何か？", a: "発注コスト（発注回数を減らすほど下がる）と保管コスト（在庫を減らすほど下がる）のトレードオフの合計、すなわち総在庫関連コスト。" },
+  { id: 302, cat: "在庫理論", q: "安全在庫（Safety Stock）の基本計算式は？", a: "安全在庫 = Z値（サービスレベルに対応）× リードタイム中の需要の標準偏差。需要・リードタイム双方の変動を考慮するより厳密な式も存在する。" },
+  { id: 303, cat: "在庫理論", q: "発注点（Reorder Point, ROP）の計算式は？", a: "ROP = 平均日次需要 × リードタイム + 安全在庫。" },
+  { id: 304, cat: "在庫理論", q: "サービスレベル95%に対応するZ値はおよそいくつか？", a: "約1.65。サービスレベルを高めるほどZ値は大きくなり、必要な安全在庫も増える。" },
+  { id: 305, cat: "在庫理論", q: "ABC分析とは何か？", a: "在庫アイテムを金額影響度等で3グループ（A：少数だが影響大、B：中間、C：多数だが影響小）に分類し、管理の手間をメリハリづける手法。" },
+  { id: 306, cat: "在庫理論", q: "多階層在庫最適化（Multi-Echelon Inventory Optimization, MEIO）とは？", a: "サプライヤー・工場・DC・店舗など複数の階層（エシュロン）を一つのシステムとして捉え、ある階層の在庫が他階層に必要な在庫量に与える影響まで考慮して、ネットワーク全体で最適な在庫配置を決める手法。" },
+  { id: 307, cat: "在庫理論", q: "従来の在庫計算（単一階層アプローチ）がMEIOに劣る点は？", a: "各拠点の在庫を独立に計算するため、拠点間の補充関係による相互作用を見落とし、ネットワーク全体では過剰・過少在庫が生じやすい。" },
+  { id: 308, cat: "在庫理論", q: "JIT（ジャストインタイム）の基本思想は？", a: "必要なものを、必要な時に、必要な量だけ生産・調達し、在庫を最小化するという考え方。かんばん方式などのプル型の仕組みで実現される。" },
+  { id: 309, cat: "在庫理論", q: "かんばん方式における「プル（pull）」の意味は？", a: "後工程が実際に使った分だけ、かんばん（指示票）を用いて前工程に生産・補充を指示する仕組み。需要が生産を引っ張る形になる。" },
+
+  // 生産計画・MRP
+  { id: 400, cat: "生産計画・MRP", q: "MPS（基準生産計画）とは何か？", a: "生産計画（Production Plan）をより詳細な製品・数量・時期レベルに落とし込んだ計画。MRPの起点となる。" },
+  { id: 401, cat: "生産計画・MRP", q: "RCCP（大まかな能力計画）の目的は？", a: "MPSが、ボトルネック設備や主要人員など少数の重要資源の能力範囲内で実行可能かどうかを、集約レベル・中期（概ね3〜18ヶ月）で検証すること。" },
+  { id: 402, cat: "生産計画・MRP", q: "CRP（能力所要量計画）とは何か？", a: "MRP展開後の全ワークセンターを対象に、詳細な負荷（能力所要量）を計算する能力計画の手法。RCCPより詳細なレベルで実行可能性を検証する。" },
+  { id: 403, cat: "生産計画・MRP", q: "MRPにおける「総所要量（Gross Requirement）」の算出方法は？", a: "BOM展開により、MPS上の最終製品数量を、それを構成する各部品・原材料の必要数量に分解して求める。" },
+  { id: 404, cat: "生産計画・MRP", q: "MRPにおける「正味所要量（Net Requirement）」の計算式は？", a: "正味所要量 = 総所要量 − 手持在庫 − 入庫予定（スケジュールド・レシート）。" },
+  { id: 405, cat: "生産計画・MRP", q: "MRPにおける「タイムフェーズ（時間展開）」とオフセットの考え方は？", a: "計画発注（Planned Order）の発注時期を、必要時期からその品目のリードタイム分だけ前倒し（オフセット）して算出すること。" },
+  { id: 406, cat: "生産計画・MRP", q: "MRPのロットサイジング手法を3つ以上挙げよ。", a: "Lot-for-Lot（正味所要量そのまま発注）、固定発注量（Fixed Order Quantity）、期間発注量（Period Order Quantity）、EOQベースのロットサイジングなど。" },
+  { id: 407, cat: "生産計画・MRP", q: "S&OPからMRP・CRPまでの計画詳細化の流れを説明せよ。", a: "S&OPが集約レベルの生産目標を設定→MPSが製品・数量・時期を specify→RCCPがMPSの実行可能性を検証→MRPがBOM展開して詳細な所要量・発注計画を生成→CRPが全ワークセンターの負荷を検証、という流れで詳細化されていく。" },
+  { id: 408, cat: "生産計画・MRP", q: "Available-to-Promise（ATP）とは何か。", a: "顧客の希望出荷日に対して約束可能な製品数量。通常、将来の入荷予定を考慮して時間軸で管理される（時間フェーズATP）。" },
+  { id: 409, cat: "生産計画・MRP", q: "Capable-to-Promise（CTP）とは何か。", a: "ATPと同様の考え方に加え、部品在庫だけでなく労働力・設備の稼働可能状況も考慮し、指定日までに構成・組立が可能かを判定する、より高度な引当ロジック。" },
+  { id: 410, cat: "生産計画・MRP", q: "制約理論（Theory of Constraints, TOC）とは何か。", a: "生産量は一連の制約（work center容量、部品availability、資金等）によって決定されるという生産管理理論。総スループットは最小の制約（ボトルネック）の容量を超えられない。" },
+
+  // 物流・貿易
+  { id: 500, cat: "物流・貿易", q: "WMS（倉庫管理システム）の主要機能を4つ以上挙げよ。", a: "入荷、格納（Put-away）、在庫管理、ピッキング、梱包、出荷。" },
+  { id: 501, cat: "物流・貿易", q: "クロスドッキングとは何か？", a: "入荷した商品をほとんど在庫として保管せず、短時間で仕分け・積み替えして出荷する物流手法。保管・回収作業を排除し、リードタイムを短縮する。" },
+  { id: 502, cat: "物流・貿易", q: "スロッティング（Slotting）とは何か？", a: "商品特性（出荷頻度・サイズ・重量など）に応じて、倉庫内の最適な保管・ピッキング位置を割り当てる仕組み。ピッキング効率に直結する。" },
+  { id: 503, cat: "物流・貿易", q: "TMS（輸送管理システム）の主要機能を3つ以上挙げよ。", a: "経路（ルート）最適化、キャリア（輸送業者）選定、積載計画（ロードプランニング）、運賃精算監査、実績分析。" },
+  { id: 504, cat: "物流・貿易", q: "TMSにおける「ロードオプティマイゼーション」の目的は？", a: "車両・コンテナの積載スペースを最大限活用しつつコストを最小化する、最適な積み方・輸送計画を決定すること。空荷輸送（エンプティマイル）の削減にも寄与する。" },
+  { id: 505, cat: "物流・貿易", q: "Incoterms（インコタームズ）とは何か？", a: "国際商業会議所（ICC）が定める、国際貿易における売主・買主間の費用・リスク負担の分岐点を定義する定型取引条件。" },
+  { id: 506, cat: "物流・貿易", q: "EXW（Ex Works）条件の特徴は？", a: "売主指定場所で商品を引き渡すのみで、その後の費用・リスクはすべて買主負担。売主の義務が最も軽い条件。" },
+  { id: 507, cat: "物流・貿易", q: "FOB（Free on Board）条件でリスクが移転するタイミングは？", a: "指定積出港で商品が本船に積み込まれた時点。それ以降の運賃・保険・リスクは買主負担となる。" },
+  { id: 508, cat: "物流・貿易", q: "DDP（Delivered Duty Paid）条件の特徴は？", a: "関税通関を含め、指定仕向地に商品を届けるまでの全ての費用とリスクを売主が負担する、売主の義務が最も重い条件。" },
+  { id: 509, cat: "物流・貿易", q: "CIF（Cost, Insurance and Freight）条件とは？", a: "売主が仕向港までの運賃・保険を負担する条件。ただしリスクは積出港で買主へ移転する。" },
+  { id: 510, cat: "物流・貿易", q: "CFR（Cost and Freight）条件とは？", a: "売主が仕向港までの運賃を負担する条件（保険は買主負担）。リスクは積出港で買主へ移転する。" },
+  { id: 511, cat: "物流・貿易", q: "サードパーティ・ロジスティクス（3PL）とは何か。", a: "企業のロジスティクス業務の全部または一部を、専門の外部業者にアウトソーシングすること。輸送・倉庫保管・クロスドッキング・在庫管理・梱包・貨物利用運送などのサービスを含む。" },
+  { id: 512, cat: "物流・貿易", q: "フォースパーティ・ロジスティクス（4PL）とは何か。", a: "複数の3PL業者を含むサプライチェーン全体を、単一の窓口として統合管理する組織形態。顧客企業の主要なSCM窓口として機能し、自らは車両・倉庫などの資産を保有しないことが多い。" },
+  { id: 513, cat: "物流・貿易", q: "総所有コスト（Total Cost of Ownership, TCO）とは何か。", a: "購入価格だけでなく、輸送・保管・損傷/目減り・税金・保険、さらに設置・保守・廃棄費用まで含めた、資産取得に伴う総コスト。" },
+  { id: 514, cat: "物流・貿易", q: "FCA（Free Carrier）条件の特徴は？", a: "売主が指定された運送人に商品を引き渡した時点で、売主の義務が果たされたとみなされる条件。" },
+
+  // システムアーキテクチャ
+  { id: 600, cat: "システムアーキテクチャ", q: "ERP（企業資源計画）はサプライチェーンシステムの中でどのような役割を担うか？", a: "受注・財務・資材管理などの基幹業務を担い、サプライチェーン全体の戦略的な方向性を示すシステム。" },
+  { id: 606, cat: "システムアーキテクチャ", q: "APS（先進的計画・スケジューリングシステム）はサプライチェーンシステムの中でどのような役割を担うか？", a: "実際の設備能力・人員・段取りなどの制約を考慮して、実行可能な詳細スケジュールを作成するシステム。" },
+  { id: 607, cat: "システムアーキテクチャ", q: "MES（製造実行システム）はサプライチェーンシステムの中でどのような役割を担うか？", a: "APSが立てたスケジュールを現場で実行し、実績データをリアルタイムでフィードバックするシステム。" },
+  { id: 601, cat: "システムアーキテクチャ", q: "多くのERPの標準スケジューリング機能（MRP）の限界は？", a: "能力を無限とみなす「無限能力計画」が基本であり、設備・人員などの実際の制約を考慮しない場合が多い。" },
+  { id: 603, cat: "システムアーキテクチャ", q: "APSが計画立案に利用する主なデータソースを3つ以上挙げよ。", a: "ERP由来の受注・品目マスタ・BOM・ルーティング・在庫・購買データに加え、MES・WMS・労務・サプライヤーデータなど。" },
+  { id: 604, cat: "システムアーキテクチャ", q: "計画と実行の「クローズドループ」とは何を指すか？", a: "APSが立てた計画をMESが現場で実行し、その実績データがAPSにフィードバックされて再計画される、計画と実行が連続的に結びついた仕組み。" },
+  { id: 605, cat: "システムアーキテクチャ", q: "APS（Advanced Planning & Scheduling）がプロアクティブと評される理由は？", a: "制約を事前に織り込んだスケジュールを能動的に作成するため、実行不可能な計画による手戻りを未然に防げるから。" },
+
+  // KPI・パフォーマンス指標
+  { id: 700, cat: "KPI・パフォーマンス指標", q: "OTIF（On-Time In-Full）とは何を測る指標か？", a: "注文が「約束された納期通り（On-Time）」かつ「数量・内容に過不足なく（In-Full）」納品されたかを測る指標。サプライチェーンの最重要KPIの一つとされる。" },
+  { id: 701, cat: "KPI・パフォーマンス指標", q: "パーフェクトオーダー率とは何か？", a: "納期遵守・数量過不足なし（OTIFの2条件）に加え、破損なし・書類/請求の正確性なども満たした、より包括的な「完璧な注文」の達成率を示す指標。" },
+  { id: 702, cat: "KPI・パフォーマンス指標", q: "キャッシュ・トゥ・キャッシュ・サイクルタイムとは？", a: "サプライヤーへの支払いから顧客からの入金までの日数。運転資本の効率性を示す指標で、優良企業では1ヶ月未満とされる。" },
+  { id: 703, cat: "KPI・パフォーマンス指標", q: "在庫回転率（Inventory Turnover）とは何を示す指標か？", a: "一定期間内に在庫が何回販売・補充されたかを示す指標。一般的な健全な範囲は年5〜10回転程度とされる。" },
+  { id: 704, cat: "KPI・パフォーマンス指標", q: "OTIFの一般的な優良水準の目安は？", a: "85〜95%程度が良好とされ、業界トップ企業はさらに高い水準を目標とする。" },
+];
+
+const CATS = ["すべて", ...Array.from(new Set(DECK.map(c => c.cat)))];
+const STORAGE_KEY = "scmFlashcardsProgress_v1";
+
+function loadProgress() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  } catch (e) { return {}; }
+}
+function saveProgress(p) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+}
+
+let progress = loadProgress();
+let activeDeck = [...DECK];
+let idx = 0;
+let flipped = false;
+
+const categorySelect = document.getElementById("categorySelect");
+const modeSelect = document.getElementById("modeSelect");
+const card = document.getElementById("card");
+const qText = document.getElementById("qText");
+const aText = document.getElementById("aText");
+const badgeFront = document.getElementById("badgeFront");
+const badgeBack = document.getElementById("badgeBack");
+const indexFront = document.getElementById("indexFront");
+const indexBack = document.getElementById("indexBack");
+const statsText = document.getElementById("statsText");
+const masteredText = document.getElementById("masteredText");
+const progressFill = document.getElementById("progressFill");
+const cardWrap = document.getElementById("cardWrap");
+
+CATS.forEach(c => {
+  const opt = document.createElement("option");
+  opt.value = c;
+  opt.textContent = c;
+  categorySelect.appendChild(opt);
+});
+
+function buildDeck() {
+  const cat = categorySelect.value;
+  const mode = modeSelect.value;
+  let deck = cat === "すべて" ? [...DECK] : DECK.filter(c => c.cat === cat);
+  if (mode === "unknown") {
+    deck = deck.filter(c => (progress[c.id]?.status) !== "known");
+  }
+  activeDeck = deck;
+  idx = 0;
+  flipped = false;
+  card.classList.remove("flipped");
+  render();
+}
+
+function render() {
+  const totalAll = (categorySelect.value === "すべて" ? DECK.length : DECK.filter(c => c.cat === categorySelect.value).length);
+  const masteredAll = DECK.filter(c => (categorySelect.value === "すべて" || c.cat === categorySelect.value) && progress[c.id]?.status === "known").length;
+
+  if (activeDeck.length === 0) {
+    cardWrap.innerHTML = '<div class="empty-state">🎉 このカテゴリはすべて習得済みです！<br>「全カード」モードに切り替えると復習できます。</div>';
+    statsText.textContent = `0 / ${totalAll}`;
+    masteredText.textContent = `習得済み: ${masteredAll}`;
+    progressFill.style.width = totalAll ? `${(masteredAll/totalAll)*100}%` : "0%";
+    return;
+  }
+
+  const c = activeDeck[idx];
+  qText.textContent = c.q;
+  aText.textContent = c.a;
+  badgeFront.textContent = c.cat;
+  badgeBack.textContent = c.cat;
+  indexFront.textContent = `${idx + 1} / ${activeDeck.length}`;
+  indexBack.textContent = `${idx + 1} / ${activeDeck.length}`;
+
+  statsText.textContent = `${idx + 1} / ${activeDeck.length}`;
+  masteredText.textContent = `習得済み: ${masteredAll} / ${totalAll}`;
+  progressFill.style.width = totalAll ? `${(masteredAll/totalAll)*100}%` : "0%";
+}
+
+function flip() {
+  flipped = !flipped;
+  card.classList.toggle("flipped", flipped);
+}
+
+function goNext() {
+  if (activeDeck.length === 0) return;
+  idx = (idx + 1) % activeDeck.length;
+  flipped = false;
+  card.classList.remove("flipped");
+  render();
+}
+
+function markStatus(status) {
+  if (activeDeck.length === 0) return;
+  const c = activeDeck[idx];
+  progress[c.id] = { status, lastReviewed: Date.now() };
+  saveProgress(progress);
+  if (modeSelect.value === "unknown" && status === "known") {
+    const wasLast = idx >= activeDeck.length - 1;
+    activeDeck.splice(idx, 1);
+    if (activeDeck.length === 0) { render(); return; }
+    idx = wasLast ? 0 : idx % activeDeck.length;
+    flipped = false;
+    card.classList.remove("flipped");
+    render();
+  } else {
+    goNext();
+  }
+}
+
+function shuffle() {
+  for (let i = activeDeck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [activeDeck[i], activeDeck[j]] = [activeDeck[j], activeDeck[i]];
+  }
+  idx = 0;
+  flipped = false;
+  card.classList.remove("flipped");
+  render();
+}
+
+card.addEventListener("click", flip);
+document.getElementById("knownBtn").addEventListener("click", () => markStatus("known"));
+document.getElementById("unknownBtn").addEventListener("click", () => markStatus("unknown"));
+document.getElementById("shuffleBtn").addEventListener("click", shuffle);
+categorySelect.addEventListener("change", buildDeck);
+modeSelect.addEventListener("change", buildDeck);
+document.getElementById("resetProgressBtn").addEventListener("click", () => {
+  if (confirm("すべての学習進捗をリセットしますか？")) {
+    progress = {};
+    saveProgress(progress);
+    buildDeck();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  const tag = e.target.tagName;
+  if (tag === "SELECT" || tag === "INPUT" || tag === "TEXTAREA") return;
+  if (e.code === "Space") { e.preventDefault(); flip(); }
+  if (e.key === "1") markStatus("unknown");
+  if (e.key === "2") markStatus("known");
+});
+
+buildDeck();
+</script>
+</body>
+</html>
