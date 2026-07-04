@@ -238,6 +238,7 @@
       <div class="hint">クリックして質問に戻る</div>
     </div>
   </div>
+  <div class="empty-state" id="emptyState" style="display:none;">🎉 このカテゴリはすべて習得済みです！<br>「全カード」モードに切り替えると復習できます。</div>
 </div>
 
 <div class="controls">
@@ -531,6 +532,7 @@ const statsText = document.getElementById("statsText");
 const masteredText = document.getElementById("masteredText");
 const progressFill = document.getElementById("progressFill");
 const cardWrap = document.getElementById("cardWrap");
+const emptyState = document.getElementById("emptyState");
 
 CATS.forEach(c => {
   const opt = document.createElement("option");
@@ -558,12 +560,16 @@ function render() {
   const masteredAll = DECK.filter(c => (categorySelect.value === "すべて" || c.cat === categorySelect.value) && progress[c.id]?.status === "known").length;
 
   if (activeDeck.length === 0) {
-    cardWrap.innerHTML = '<div class="empty-state">🎉 このカテゴリはすべて習得済みです！<br>「全カード」モードに切り替えると復習できます。</div>';
+    card.style.display = "none";
+    emptyState.style.display = "block";
     statsText.textContent = `0 / ${totalAll}`;
     masteredText.textContent = `習得済み: ${masteredAll}`;
     progressFill.style.width = totalAll ? `${(masteredAll/totalAll)*100}%` : "0%";
     return;
   }
+
+  card.style.display = "";
+  emptyState.style.display = "none";
 
   const c = activeDeck[idx];
   qText.textContent = c.q;
