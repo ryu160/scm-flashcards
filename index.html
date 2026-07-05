@@ -212,7 +212,9 @@
   <select id="categorySelect"></select>
   <select id="modeSelect">
     <option value="all">全カード</option>
-    <option value="unknown">未習得のみ</option>
+    <option value="unknown">未習得のみ（もう一度＋未振り分け）</option>
+    <option value="unknown_only">もう一度のみ</option>
+    <option value="untriaged">未振り分けのみ</option>
   </select>
   <button class="tool-btn" id="resetProgressBtn">進捗をリセット</button>
 </div>
@@ -667,13 +669,19 @@ CATS.forEach(c => {
   categorySelect.appendChild(opt);
 });
 
+function matchesMode(c, mode) {
+  const status = progress[c.id]?.status;
+  if (mode === "untriaged") return !progress[c.id];
+  if (mode === "unknown_only") return status === "unknown";
+  if (mode === "unknown") return status !== "known";
+  return true;
+}
+
 function buildDeck() {
   const cat = categorySelect.value;
   const mode = modeSelect.value;
   let deck = cat === "すべて" ? [...DECK] : DECK.filter(c => c.cat === cat);
-  if (mode === "unknown") {
-    deck = deck.filter(c => (progress[c.id]?.status) !== "known");
-  }
+  deck = deck.filter(c => matchesMode(c, mode));
   activeDeck = deck;
   idx = 0;
   flipped = false;
@@ -682,15 +690,18 @@ function buildDeck() {
 }
 
 function render() {
-  const totalAll = (categorySelect.value === "すべて" ? DECK.length : DECK.filter(c => c.cat === categorySelect.value).length);
-  const masteredAll = DECK.filter(c => (categorySelect.value === "すべて" || c.cat === categorySelect.value) && progress[c.id]?.status === "known").length;
+  const inCategory = categorySelect.value === "すべて" ? DECK : DECK.filter(c => c.cat === categorySelect.value);
+  const totalAll = inCategory.length;
+  const knownAll = inCategory.filter(c => progress[c.id]?.status === "known").length;
+  const unknownAll = inCategory.filter(c => progress[c.id]?.status === "unknown").length;
+  const untriagedAll = totalAll - knownAll - unknownAll;
 
   if (activeDeck.length === 0) {
     card.style.display = "none";
     emptyState.style.display = "block";
     statsText.textContent = `0 / ${totalAll}`;
-    masteredText.textContent = `習得済み: ${masteredAll}`;
-    progressFill.style.width = totalAll ? `${(masteredAll/totalAll)*100}%` : "0%";
+    masteredText.textContent = `習得済み: ${knownAll} / もう一度: ${unknownAll} / 未振り分け: ${untriagedAll}`;
+    progressFill.style.width = totalAll ? `${(knownAll/totalAll)*100}%` : "0%";
     return;
   }
 
@@ -706,8 +717,8 @@ function render() {
   indexBack.textContent = `${idx + 1} / ${activeDeck.length}`;
 
   statsText.textContent = `${idx + 1} / ${activeDeck.length}`;
-  masteredText.textContent = `習得済み: ${masteredAll} / ${totalAll}`;
-  progressFill.style.width = totalAll ? `${(masteredAll/totalAll)*100}%` : "0%";
+  masteredText.textContent = `習得済み: ${knownAll} / もう一度: ${unknownAll} / 未振り分け: ${untriagedAll}`;
+  progressFill.style.width = totalAll ? `${(knownAll/totalAll)*100}%` : "0%";
 }
 
 function flip() {
@@ -728,7 +739,7 @@ function markStatus(status) {
   const c = activeDeck[idx];
   progress[c.id] = { status, lastReviewed: Date.now() };
   saveProgress(progress);
-  if (modeSelect.value === "unknown" && status === "known") {
+  if (!matchesMode(c, modeSelect.value)) {
     const wasLast = idx >= activeDeck.length - 1;
     activeDeck.splice(idx, 1);
     if (activeDeck.length === 0) { render(); return; }
